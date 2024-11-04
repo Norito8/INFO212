@@ -19,7 +19,8 @@ class Car:
         self.status = status
 
     def create_car(make, model, year, location, status, car_id):
-        data = _get_connection().execute_query("CREATE (c:Car {make: $make, model: $model, year: $year, location: $location, status: $status, car_id: $car_id})", make=make, model=model, year=year, location=location, status=status, car_id=car_id)
+        data = _get_connection().execute_query("CREATE (c:Car {make: $make, model: $model, year: $year, location: $location, status: $status, car_id: $car_id})",
+                                                make=make, model=model, year=year, location=location, status=status, car_id=car_id)
         return data
         
     def find_car(car_id):
@@ -37,16 +38,35 @@ class Car:
             )
         return None
     
-    def update_car(car_id, new_status):
-        data = _get_connection().execute_query("""
-        MATCH (c:Car {car_id: $car_id})
-        SET c.status = $new_status
-        RETURN c
-        """, car_id=car_id, new_status=new_status)
-        return data
+    def update_car(car_id, new_status, customer_id=None):
+        with _get_connection().session() as session:
+            query = """
+            MATCH (c:Car {car_id: $car_id})
+            SET c.status = $new_status
+            RETURN c
+            """
+            result = session.run(query, car_id=car_id, new_status=new_status)
+            car = result.single()[0] if result else None
+
+            if car and customer_id:
+                if new_status == "booked":
+                    session.run("""
+                    MATCH (c:Car {car_id: $car_id}), (cust:Customer {customer_id: $customer_id})
+                    MERGE (c)-[:BOOKED_BY]->(cust)
+                    """, car_id=car_id, customer_id=customer_id)
+                elif new_status == "rented":
+                    session.run("""
+                    MATCH (c:Car {car_id: $car_id})-[r:BOOKED_BY]->(:Customer)
+                    DELETE r
+                    """, car_id=car_id)
+                    session.run("""
+                    MATCH (c:Car {car_id: $car_id}), (cust:Customer {customer_id: $customer_id})
+                    MERGE (c)-[:RENTED_BY]->(cust)
+                    """, car_id=car_id, customer_id=customer_id)
+            return car
 
     def delete_car(car_id):
-        data = _get_connection().execute_query("MATCH (c:Car) WHERE ID(c) = $car_id DELETE c", car_id=car_id)
+        data = _get_connection().execute_query("MATCH (c:Car {car_id: $car_id}) DETACH DELETE c", car_id=car_id)
         return data
     
     def find_car_by_status(customer_id, statuses):
@@ -66,7 +86,8 @@ class Customer:
         self.address = address
 
     def create_customer(name, age, address, customer_id):
-        data = _get_connection().execute_query("CREATE (a:Customer {name: $name, age: $age, address: $address, customer_id: $customer_id})", name=name, age=age, address=address, customer_id=customer_id)
+        data = _get_connection().execute_query("CREATE (a:Customer {name: $name, age: $age, address: $address, customer_id: $customer_id})",
+                                                name=name, age=age, address=address, customer_id=customer_id)
         return data
 
     def find_customer(customer_id):
@@ -85,14 +106,14 @@ class Customer:
 
     def update_customer(customer_id, new_address):
         data = _get_connection().execute_query("""
-        MATCH (a:Customer) WHERE ID(a) = $customer_id
+        MATCH (a:Customer {customer_id: $customer_id})
         SET a.status = $new_address
         RETURN a
         """, customer_id=customer_id, new_address=new_address)
         return data
 
-    def delete_customer():
-        data = _get_connection().execute_query("""MATHCH (a:Customer) WHERE ID(a) = $customer_id DETACH DELETE a""")
+    def delete_customer(customer_id):
+        data = _get_connection().execute_query("MATCH (a:Customer {customer_id: $customer_id}) DETACH DELETE a", customer_id=customer_id)
         return data
     
 class Employee:
@@ -106,7 +127,7 @@ class Employee:
         return data
     
     def find_employee(employee_id):
-        data = _get_connection().execute_query("MATCH (e:Employee) WHERE ID(e) = $employee_id RETURN e", employee_id=employee_id)
+        data = _get_connection().execute_query("MATCH (e:Employee {employee_id: $employee_id}) RETURN e", employee_id=employee_id)
         if data:
             employee_node = data[0][0]
             return Employee(
@@ -118,19 +139,19 @@ class Employee:
     
     def update_employee(employee_id, new_address):
         data = _get_connection().execute_query("""
-        MATCH (e:Employee) WHERE ID(e) = $employee_id
+        MATCH (e:Employee {employee_id: $employee_id})
         SET e.address = $new_address
         RETURN e
         """, employee_id=employee_id, new_address=new_address)
         return data
     
     def delete_employee(employee_id):
-        data = _get_connection().execute_query("MATCH (e:Employee) WHERE ID(e) = $employee_id DELETE e", employee_id=employee_id)
+        data = _get_connection().execute_query("MATCH (e:Employee {employee_id: $employee_id}) DELETE e", employee_id=employee_id)
         return data
 
 # Car.create_car(make="Toyota", model="Camry", year=2021, location="Branch Bergen", status="available", car_id="123")
 # Customer.create_customer(name="John Doe", age=30, address="Fyllingsdalen, Bergn", customer_id="E1")
-Customer.create_customer(name="Samir Yebok", age=24, address="Åsane, Bergen", customer_id="E2")
+# Customer.create_customer(name="Samir Yebok", age=24, address="Åsane, Bergen", customer_id="E2")
 # Car.create_car(make="Honda", model="Civic", year=2020, location="Branch Bergen", status="available", car_id="124")
 # Car.create_car(make="Ford", model="Focus", year=2019, location="Branch Bergen", status="available", car_id="125")
 # Car.create_car(make="BMW", model="3 Series", year=2022, location="BBranch Bergen", status="available", car_id="126")
@@ -139,3 +160,4 @@ Customer.create_customer(name="Samir Yebok", age=24, address="Åsane, Bergen", c
 # Car.create_car(make="Volkswagen", model="Golf", year=2020, location="Branch Bergen", status="available", car_id="129")
 # Car.create_car(make="Tesla", model="Model 3", year=2023, location="Branch Bergen", status="available", car_id="130")
 # Car.create_car(make="Nissan", model="Altima", year=2019, location="Branch Bergen", status="available", car_id="131")
+# Customer.delete_customer(customer_id="E2")

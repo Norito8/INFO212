@@ -31,7 +31,7 @@ def order_car():
             return redirect(url_for('home'))
 
         if car.status == "available":
-            Car.update_car(car_id, "booked")
+            Car.update_car(car_id, "booked", customer_id)
             flash(f"Car ({car.make} {car.model}, {car.year}) id:{car_id} has been booked by customer {customer.name}, id: {customer_id}.", "success")
             return redirect(url_for('home'))
         else:
@@ -40,7 +40,7 @@ def order_car():
     
     return render_template('order_car.html')
 
-# Cancel Car Order Route
+
 @app.route('/cancel-order-car', methods=['GET', 'POST'])
 def cancel_order_car():
     if request.method == 'POST':
