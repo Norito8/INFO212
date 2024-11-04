@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Car</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 1em;
+            color: white;
+            background-color: #007BFF;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        .form-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input {
+            width: 200px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 1em;
+            background-color: #e4e5e6;
+            color: #333;
+            border: none;
+            outline: auto;
+            outline-color: #3333333d;
+            transition: background-color 0.3s;
+        }
+
+        .input-title {
+            font-size: 1.2em;
+            text-align: right;
+            width: 150px;
+        }
+
+        .flash-message {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Order a Car</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('order_car') }}" method="post">
+        <div class="form-group">
+            <label class="input-title" for="customer_id">Customer ID:</label>
+            <input class="input" type="text" name="customer_id" id="customer_id" required>
+        </div>
+        <div class="form-group">
+            <label class="input-title" for="car_id">Car ID:</label>
+            <input class="input" type="text" name="car_id" id="car_id" required>
+        </div>
+        <div class="buttons">
+            <button class="button" type="button" onclick="window.location.href='{{ url_for('home') }}'">Return to Home</button>
+            <button class="button" type="submit">Order Car</button>
+        </div>
+    </form>
+</body>
+</html>
+
